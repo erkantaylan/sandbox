@@ -8,13 +8,17 @@
         AllowsTransparency="True"
         Background="Transparent"
         Topmost="True"
+        UseLayoutRounding="True"
+        SnapsToDevicePixels="True"
+        TextOptions.TextFormattingMode="Display"
+        TextOptions.TextRenderingMode="ClearType"
         MouseLeftButtonDown="Window_MouseLeftButtonDown">
     
     <Grid>
         <Viewbox Margin="10">
             <Canvas x:Name="ClockCanvas" Width="400" Height="400">
                 
-                <!-- Outer shadow/glow ring -->
+                <!-- Outer shadow/glow ring (stationary) -->
                 <Ellipse Width="400" Height="400" Canvas.Left="0" Canvas.Top="0">
                     <Ellipse.Fill>
                         <RadialGradientBrush>
@@ -24,7 +28,7 @@
                     </Ellipse.Fill>
                 </Ellipse>
                 
-                <!-- Outer metallic bezel -->
+                <!-- Outer metallic bezel (stationary) -->
                 <Ellipse Width="390" Height="390" Canvas.Left="5" Canvas.Top="5">
                     <Ellipse.Fill>
                         <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
@@ -40,75 +44,81 @@
                     </Ellipse.Effect>
                 </Ellipse>
                 
-                <!-- Inner bezel ring -->
-                <Ellipse Width="370" Height="370" Canvas.Left="15" Canvas.Top="15"
-                         Stroke="#00d4ff" StrokeThickness="1.5" Fill="Transparent" Opacity="0.6"/>
+                <!-- ROTATING CLOCK FACE CONTAINER -->
+                <Canvas x:Name="RotatingFace" Width="400" Height="400">
+                    
+                    <!-- Inner bezel ring -->
+                    <Ellipse Width="370" Height="370" Canvas.Left="15" Canvas.Top="15"
+                             Stroke="#00d4ff" StrokeThickness="1.5" Fill="Transparent" Opacity="0.6"/>
+                    
+                    <!-- Clock face background with premium gradient -->
+                    <Ellipse Width="360" Height="360" Canvas.Left="20" Canvas.Top="20">
+                        <Ellipse.Fill>
+                            <RadialGradientBrush GradientOrigin="0.3,0.3">
+                                <GradientStop Color="#1e2a4a" Offset="0"/>
+                                <GradientStop Color="#0d1525" Offset="0.7"/>
+                                <GradientStop Color="#080c15" Offset="1"/>
+                            </RadialGradientBrush>
+                        </Ellipse.Fill>
+                    </Ellipse>
+                    
+                    <!-- Subtle inner glow ring -->
+                    <Ellipse Width="340" Height="340" Canvas.Left="30" Canvas.Top="30"
+                             Stroke="#00d4ff" StrokeThickness="0.5" Fill="Transparent" Opacity="0.3"/>
+                    
+                    <!-- Hour markers container -->
+                    <Canvas x:Name="MarkerCanvas" Width="400" Height="400"/>
+                    
+                    <!-- Digital time display -->
+                    <Border Canvas.Left="135" Canvas.Top="255" Width="130"
+                            CornerRadius="6" 
+                            Padding="12,6"
+                            Background="#10ffffff">
+                        <Border.Effect>
+                            <DropShadowEffect Color="#00d4ff" BlurRadius="15" ShadowDepth="0" Opacity="0.2"/>
+                        </Border.Effect>
+                        <StackPanel>
+                            <TextBlock x:Name="DigitalTime" 
+                                       Text="00:00:00" 
+                                       FontFamily="Segoe UI Light" 
+                                       FontSize="22" 
+                                       FontWeight="Light"
+                                       Foreground="#80ffffff"
+                                       HorizontalAlignment="Center"/>
+                            <TextBlock x:Name="DateDisplay" 
+                                       Text="Monday, Jan 01" 
+                                       FontFamily="Segoe UI" 
+                                       FontSize="10" 
+                                       Foreground="#50ffffff"
+                                       HorizontalAlignment="Center"
+                                       Margin="0,-2,0,0"/>
+                        </StackPanel>
+                    </Border>
+                    
+                    <!-- Hour hand -->
+                    <Line x:Name="HourHand" 
+                          X1="200" Y1="200" X2="200" Y2="130"
+                          Stroke="#ffffff" StrokeThickness="6" 
+                          StrokeStartLineCap="Round" StrokeEndLineCap="Round">
+                        <Line.Effect>
+                            <DropShadowEffect Color="#000000" BlurRadius="8" ShadowDepth="2" Opacity="0.5"/>
+                        </Line.Effect>
+                    </Line>
+                    
+                    <!-- Minute hand -->
+                    <Line x:Name="MinuteHand" 
+                          X1="200" Y1="200" X2="200" Y2="70"
+                          Stroke="#e0e0e0" StrokeThickness="4" 
+                          StrokeStartLineCap="Round" StrokeEndLineCap="Round">
+                        <Line.Effect>
+                            <DropShadowEffect Color="#000000" BlurRadius="6" ShadowDepth="2" Opacity="0.4"/>
+                        </Line.Effect>
+                    </Line>
+                    
+                </Canvas>
+                <!-- END ROTATING CONTAINER -->
                 
-                <!-- Clock face background with premium gradient -->
-                <Ellipse Width="360" Height="360" Canvas.Left="20" Canvas.Top="20">
-                    <Ellipse.Fill>
-                        <RadialGradientBrush GradientOrigin="0.3,0.3">
-                            <GradientStop Color="#1e2a4a" Offset="0"/>
-                            <GradientStop Color="#0d1525" Offset="0.7"/>
-                            <GradientStop Color="#080c15" Offset="1"/>
-                        </RadialGradientBrush>
-                    </Ellipse.Fill>
-                </Ellipse>
-                
-                <!-- Subtle inner glow ring -->
-                <Ellipse Width="340" Height="340" Canvas.Left="30" Canvas.Top="30"
-                         Stroke="#00d4ff" StrokeThickness="0.5" Fill="Transparent" Opacity="0.3"/>
-                
-                <!-- Hour markers container -->
-                <Canvas x:Name="MarkerCanvas" Width="400" Height="400"/>
-                
-                <!-- Digital time display - BEHIND hands -->
-                <Border Canvas.Left="140" Canvas.Top="255" 
-                        CornerRadius="6" 
-                        Padding="12,6"
-                        Background="#10ffffff">
-                    <Border.Effect>
-                        <DropShadowEffect Color="#00d4ff" BlurRadius="15" ShadowDepth="0" Opacity="0.2"/>
-                    </Border.Effect>
-                    <StackPanel>
-                        <TextBlock x:Name="DigitalTime" 
-                                   Text="00:00:00" 
-                                   FontFamily="Segoe UI Light" 
-                                   FontSize="22" 
-                                   FontWeight="Light"
-                                   Foreground="#80ffffff"
-                                   HorizontalAlignment="Center"/>
-                        <TextBlock x:Name="DateDisplay" 
-                                   Text="Monday, Jan 01" 
-                                   FontFamily="Segoe UI" 
-                                   FontSize="10" 
-                                   Foreground="#50ffffff"
-                                   HorizontalAlignment="Center"
-                                   Margin="0,-2,0,0"/>
-                    </StackPanel>
-                </Border>
-                
-                <!-- Hour hand - thick, elegant -->
-                <Line x:Name="HourHand" 
-                      X1="200" Y1="200" X2="200" Y2="130"
-                      Stroke="#ffffff" StrokeThickness="6" 
-                      StrokeStartLineCap="Round" StrokeEndLineCap="Round">
-                    <Line.Effect>
-                        <DropShadowEffect Color="#000000" BlurRadius="8" ShadowDepth="2" Opacity="0.5"/>
-                    </Line.Effect>
-                </Line>
-                
-                <!-- Minute hand - sleek -->
-                <Line x:Name="MinuteHand" 
-                      X1="200" Y1="200" X2="200" Y2="70"
-                      Stroke="#e0e0e0" StrokeThickness="4" 
-                      StrokeStartLineCap="Round" StrokeEndLineCap="Round">
-                    <Line.Effect>
-                        <DropShadowEffect Color="#000000" BlurRadius="6" ShadowDepth="2" Opacity="0.4"/>
-                    </Line.Effect>
-                </Line>
-                
-                <!-- Second hand - thin, accent color -->
+                <!-- STATIONARY Second hand - always points UP (North) -->
                 <Line x:Name="SecondHand" 
                       X1="200" Y1="220" X2="200" Y2="55"
                       Stroke="#ff4757" StrokeThickness="2" 
@@ -117,6 +127,19 @@
                         <DropShadowEffect Color="#ff4757" BlurRadius="8" ShadowDepth="0" Opacity="0.6"/>
                     </Line.Effect>
                 </Line>
+                
+                <!-- Second value at tip (stationary at top) -->
+                <TextBlock x:Name="SecondTip" 
+                           Text="00"
+                           FontFamily="Segoe UI"
+                           FontSize="14"
+                           FontWeight="Bold"
+                           Foreground="#ff4757"
+                           Canvas.Left="190" Canvas.Top="35">
+                    <TextBlock.Effect>
+                        <DropShadowEffect Color="#ff4757" BlurRadius="8" ShadowDepth="0" Opacity="0.8"/>
+                    </TextBlock.Effect>
+                </TextBlock>
                 
                 <!-- Center cap - layered design -->
                 <Ellipse Width="24" Height="24" Canvas.Left="188" Canvas.Top="188">

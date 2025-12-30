@@ -9,6 +9,7 @@ namespace AnalogClock;
 public partial class MainWindow : Window
 {
     private readonly DispatcherTimer _timer;
+    private readonly List<FrameworkElement> _hourTexts = new();
     private const double CenterX = 200;
     private const double CenterY = 200;
     private const double Radius = 155;
@@ -81,23 +82,37 @@ public partial class MainWindow : Window
                 if (hour == 0) hour = 12;
                 
                 double textRadius = Radius - 35;
-                double textX = CenterX + textRadius * Math.Sin(angle) - 12;
-                double textY = CenterY - textRadius * Math.Cos(angle) - 12;
+                double textX = CenterX + textRadius * Math.Sin(angle) - 13;
+                double textY = CenterY - textRadius * Math.Cos(angle) - 13;
+                
+                // Use a fixed-size Border container to prevent size wobble during rotation
+                var container = new Border
+                {
+                    Width = 26,
+                    Height = 26,
+                    RenderTransformOrigin = new Point(0.5, 0.5),
+                    SnapsToDevicePixels = true,
+                    UseLayoutRounding = true
+                };
                 
                 var hourText = new TextBlock
                 {
                     Text = hour.ToString(),
-                    FontFamily = new FontFamily("Segoe UI Light"),
-                    FontSize = 20,
-                    FontWeight = FontWeights.Light,
+                    FontFamily = new FontFamily("Segoe UI"),
+                    FontSize = 18,
+                    FontWeight = FontWeights.Normal,
                     Foreground = new SolidColorBrush(Color.FromArgb(200, 255, 255, 255)),
-                    Width = 26,
-                    TextAlignment = TextAlignment.Center
+                    TextAlignment = TextAlignment.Center,
+                    VerticalAlignment = VerticalAlignment.Center,
+                    HorizontalAlignment = HorizontalAlignment.Center
                 };
                 
-                Canvas.SetLeft(hourText, textX);
-                Canvas.SetTop(hourText, textY);
-                MarkerCanvas.Children.Add(hourText);
+                container.Child = hourText;
+                _hourTexts.Add(container);
+                
+                Canvas.SetLeft(container, textX);
+                Canvas.SetTop(container, textY);
+                MarkerCanvas.Children.Add(container);
             }
 
             MarkerCanvas.Children.Add(marker);
@@ -118,12 +133,26 @@ public partial class MainWindow : Window
         double minuteAngle = now.Minute * 6 + now.Second * 0.1;
         double hourAngle = (now.Hour % 12) * 30 + now.Minute * 0.5;
 
-        // Apply rotations
+        // Rotate the ENTIRE clock face in the OPPOSITE direction of the second hand
+        // This makes it look like the second hand is stationary while the face rotates
+        RotatingFace.RenderTransform = new RotateTransform(-secondAngle, CenterX, CenterY);
+        
+        // Counter-rotate hour numbers so they stay upright and readable
+        foreach (var hourText in _hourTexts)
+        {
+            hourText.RenderTransform = new RotateTransform(secondAngle);
+        }
+        
+        // Hour and minute hands rotate normally relative to the face
+        // No compensation needed - they move with the rotating face
         HourHand.RenderTransform = new RotateTransform(hourAngle, CenterX, CenterY);
         MinuteHand.RenderTransform = new RotateTransform(minuteAngle, CenterX, CenterY);
-        SecondHand.RenderTransform = new RotateTransform(secondAngle, CenterX, CenterY);
         
-        // Update digital display
+        // Second hand stays stationary (no transform - it points up)
+        // Second tip value stays at fixed position at top
+        SecondTip.Text = now.Second.ToString("00");
+        
+        // Update digital display (rotates with the face)
         DigitalTime.Text = now.ToString("HH:mm:ss");
         DateDisplay.Text = now.ToString("ddd, MMM dd");
     }
