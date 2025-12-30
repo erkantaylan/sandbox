@@ -5,23 +5,33 @@
     "file": "index.html",
     "general": {
         "properties": {
-            "primaryColor": {
+            "primarycolor": {
                 "text": "Primary Color",
                 "type": "color",
-                "value": "0.99 0.27 0.34"
+                "value": "1 0 0"
             },
-            "accentColor": {
+            "accentcolor": {
                 "text": "Accent Color",
                 "type": "color",
-                "value": "0 0.83 1"
+                "value": "1 0.84 0"
             },
-            "showDigital": {
+            "showdigital": {
                 "text": "Show Digital Time",
                 "type": "bool",
                 "value": true
             },
-            "showSecondTip": {
+            "showsecondtip": {
                 "text": "Show Second Number",
+                "type": "bool",
+                "value": true
+            },
+            "showparticles": {
+                "text": "Show Particles",
+                "type": "bool",
+                "value": true
+            },
+            "showsnow": {
+                "text": "Show Snow",
                 "type": "bool",
                 "value": true
             }

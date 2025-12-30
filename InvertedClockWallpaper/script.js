@@ -1,85 +1,200 @@
-// Inverted Analog Clock for Wallpaper Engine
+// Inverted Analog Clock - Canvas 2D (Stable Version)
 // The clock face rotates while the second hand stays fixed pointing north
 
 const canvas = document.getElementById('clock');
 const ctx = canvas.getContext('2d');
 
-// Configuration (can be overridden by Wallpaper Engine properties)
+// Configuration
 let config = {
-    primaryColor: '#ff4757',      // Second hand / accents
-    accentColor: '#00d4ff',       // Minute hand / glow
+    primaryColor: '#ff0000', // Christmas Red
+    accentColor: '#ffd700',  // Christmas Gold
     hourHandColor: '#ffffff',
-    faceColor: '#0d1525',
-    bezelColor: '#2a2a35',
     showDigital: true,
-    showSecondTip: true
+    showSecondTip: true,
+    showParticles: true,
+    showSnow: true
 };
 
-// Clock dimensions
 let centerX, centerY, radius;
 
-// Resize canvas to fill screen
+// Particles
+const particles = [];
+const ambientParticles = [];
+const snowParticles = [];
+
 function resize() {
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
-
-    // Clock size based on smaller dimension
     const size = Math.min(canvas.width, canvas.height) * 0.7;
     radius = size / 2;
-    centerX = canvas.width / 2;
-    centerY = canvas.height / 2;
+    centerX = Math.round(canvas.width / 2);
+    centerY = Math.round(canvas.height / 2);
+    initAmbientParticles();
+    initSnow();
 }
 
-// Wallpaper Engine property listener
+// Wallpaper Engine
 window.wallpaperPropertyListener = {
     applyUserProperties: function (properties) {
         if (properties.primarycolor) {
             const c = properties.primarycolor.value.split(' ').map(v => Math.round(v * 255));
-            config.primaryColor = `rgb(${c[0]}, ${c[1]}, ${c[2]})`;
+            config.primaryColor = `rgb(${c[0]},${c[1]},${c[2]})`;
         }
         if (properties.accentcolor) {
             const c = properties.accentcolor.value.split(' ').map(v => Math.round(v * 255));
-            config.accentColor = `rgb(${c[0]}, ${c[1]}, ${c[2]})`;
+            config.accentColor = `rgb(${c[0]},${c[1]},${c[2]})`;
         }
-        if (properties.showdigital !== undefined) {
-            config.showDigital = properties.showdigital.value;
-        }
-        if (properties.showsecondtip !== undefined) {
-            config.showSecondTip = properties.showsecondtip.value;
-        }
+        if (properties.showdigital !== undefined) config.showDigital = properties.showdigital.value;
+        if (properties.showsecondtip !== undefined) config.showSecondTip = properties.showsecondtip.value;
+        if (properties.showparticles !== undefined) config.showParticles = properties.showparticles.value;
+        if (properties.showsnow !== undefined) config.showSnow = properties.showsnow.value;
     }
 };
 
-// Draw functions
+function initSnow() {
+    snowParticles.length = 0;
+    const count = Math.floor((canvas.width * canvas.height) / 10000);
+    for (let i = 0; i < count; i++) {
+        snowParticles.push({
+            x: Math.random() * canvas.width,
+            y: Math.random() * canvas.height,
+            size: Math.random() * 3 + 1,
+            speed: Math.random() * 1 + 0.5,
+            drift: (Math.random() - 0.5) * 0.5
+        });
+    }
+}
+
+function updateSnow() {
+    if (!config.showSnow) return;
+    snowParticles.forEach(p => {
+        p.y += p.speed;
+        p.x += p.drift;
+        if (p.y > canvas.height) {
+            p.y = -10;
+            p.x = Math.random() * canvas.width;
+        }
+    });
+}
+
+function drawSnow() {
+    if (!config.showSnow) return;
+    ctx.fillStyle = '#ffffff';
+    ctx.globalAlpha = 0.6;
+    snowParticles.forEach(p => {
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+        ctx.fill();
+    });
+    ctx.globalAlpha = 1.0;
+}
+
+function initAmbientParticles() {
+    ambientParticles.length = 0;
+    for (let i = 0; i < 40; i++) {
+        ambientParticles.push({
+            angle: Math.random() * Math.PI * 2,
+            dist: radius * (0.5 + Math.random() * 0.6),
+            size: Math.random() * 2 + 0.5,
+            speed: (Math.random() - 0.5) * 0.001,
+            pulseOffset: Math.random() * Math.PI * 2
+        });
+    }
+}
+
+function spawnParticle() {
+    if (!config.showParticles || particles.length >= 80) return;
+    particles.push({
+        x: centerX,
+        y: centerY - radius * 0.7,
+        vx: (Math.random() - 0.5) * 1.5,
+        vy: (Math.random() - 0.5) * 1.5,
+        size: Math.random() * 3 + 1,
+        life: 1,
+        decay: Math.random() * 0.015 + 0.005,
+        isSparkle: Math.random() > 0.5
+    });
+}
+
+function updateParticles(time) {
+    // Trail particles
+    for (let i = particles.length - 1; i >= 0; i--) {
+        const p = particles[i];
+        p.x += p.vx;
+        p.y += p.vy;
+        p.life -= p.decay;
+        const dx = centerX - p.x, dy = centerY - p.y;
+        const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+        p.vx += (dx / dist) * 0.02;
+        p.vy += (dy / dist) * 0.02;
+        if (p.life <= 0) particles.splice(i, 1);
+    }
+    // Ambient
+    ambientParticles.forEach(p => {
+        p.angle += p.speed;
+        p.alpha = 0.1 + 0.1 * Math.sin(time * 0.02 + p.pulseOffset);
+    });
+}
+
+function drawParticles(time) {
+    if (!config.showParticles) return;
+    // Ambient (Magical dust)
+    ctx.fillStyle = config.accentColor;
+    ambientParticles.forEach(p => {
+        ctx.globalAlpha = p.alpha;
+        ctx.beginPath();
+        ctx.arc(centerX + Math.cos(p.angle) * p.dist, centerY + Math.sin(p.angle) * p.dist, p.size, 0, Math.PI * 2);
+        ctx.fill();
+    });
+    ctx.globalAlpha = 1;
+    // Trail (Sparkles)
+    particles.forEach(p => {
+        ctx.globalAlpha = p.life;
+        ctx.fillStyle = p.isSparkle ? '#fff' : config.primaryColor;
+        if (p.isSparkle && Math.sin(time * 0.2) > 0) {
+            ctx.save();
+            ctx.translate(p.x, p.y);
+            ctx.beginPath();
+            ctx.moveTo(0, -p.size * 2);
+            ctx.lineTo(0, p.size * 2);
+            ctx.moveTo(-p.size * 2, 0);
+            ctx.lineTo(p.size * 2, 0);
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+            ctx.restore();
+        } else {
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, p.size * p.life, 0, Math.PI * 2);
+            ctx.fill();
+        }
+    });
+    ctx.globalAlpha = 1;
+}
+
 function drawBezel() {
-    // Outer shadow
-    const gradient = ctx.createRadialGradient(centerX, centerY, radius * 0.85, centerX, centerY, radius);
-    gradient.addColorStop(0, 'rgba(0,0,0,0.5)');
-    gradient.addColorStop(1, 'rgba(0,0,0,0)');
-    ctx.fillStyle = gradient;
-    ctx.beginPath();
-    ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
-    ctx.fill();
+    // Elegant Gold Bezel
+    const grad = ctx.createLinearGradient(centerX - radius, centerY - radius, centerX + radius, centerY + radius);
+    grad.addColorStop(0, '#d4af37'); // Metallic gold
+    grad.addColorStop(0.3, '#f9f295'); // Bright gold
+    grad.addColorStop(0.5, '#e6be8a'); // Warm gold
+    grad.addColorStop(0.7, '#b8860b'); // Dark gold
+    grad.addColorStop(1, '#996515'); // Golden brown
 
-    // Metallic bezel
-    const bezelGrad = ctx.createLinearGradient(
-        centerX - radius, centerY - radius,
-        centerX + radius, centerY + radius
-    );
-    bezelGrad.addColorStop(0, '#4a4a5a');
-    bezelGrad.addColorStop(0.3, '#2a2a35');
-    bezelGrad.addColorStop(0.5, '#1a1a25');
-    bezelGrad.addColorStop(0.7, '#2a2a35');
-    bezelGrad.addColorStop(1, '#4a4a5a');
+    // Outer glow
+    ctx.shadowBlur = 20;
+    ctx.shadowColor = 'rgba(212, 175, 55, 0.4)';
 
-    ctx.fillStyle = bezelGrad;
+    ctx.fillStyle = grad;
     ctx.beginPath();
     ctx.arc(centerX, centerY, radius * 0.97, 0, Math.PI * 2);
     ctx.fill();
 
-    // Glow ring
-    ctx.strokeStyle = config.accentColor;
-    ctx.lineWidth = 2;
+    ctx.shadowBlur = 0;
+
+    // Inner rim
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 1;
     ctx.globalAlpha = 0.3;
     ctx.beginPath();
     ctx.arc(centerX, centerY, radius * 0.92, 0, Math.PI * 2);
@@ -87,117 +202,104 @@ function drawBezel() {
     ctx.globalAlpha = 1;
 }
 
-function drawFace(rotation) {
+function drawFace(rot) {
     ctx.save();
     ctx.translate(centerX, centerY);
-    ctx.rotate(rotation);
-    ctx.translate(-centerX, -centerY);
+    ctx.rotate(rot);
 
-    // Face background
-    const faceGrad = ctx.createRadialGradient(
-        centerX - radius * 0.2, centerY - radius * 0.2, 0,
-        centerX, centerY, radius * 0.9
-    );
-    faceGrad.addColorStop(0, '#1e2a4a');
-    faceGrad.addColorStop(0.7, '#0d1525');
-    faceGrad.addColorStop(1, '#080c15');
-
-    ctx.fillStyle = faceGrad;
+    // Deep Winter Blue Face
+    const g = ctx.createRadialGradient(0, 0, 0, 0, 0, radius * 0.9);
+    g.addColorStop(0, '#1a2a44');
+    g.addColorStop(1, '#050a14');
+    ctx.fillStyle = g;
     ctx.beginPath();
-    ctx.arc(centerX, centerY, radius * 0.9, 0, Math.PI * 2);
+    ctx.arc(0, 0, radius * 0.9, 0, Math.PI * 2);
     ctx.fill();
 
-    // Inner glow ring
-    ctx.strokeStyle = config.accentColor;
-    ctx.lineWidth = 1;
-    ctx.globalAlpha = 0.2;
-    ctx.beginPath();
-    ctx.arc(centerX, centerY, radius * 0.85, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.globalAlpha = 1;
-
-    // Draw markers
+    // Markers
     for (let i = 0; i < 60; i++) {
-        const angle = (i * 6) * Math.PI / 180;
+        const a = i * 6 * Math.PI / 180;
         const isHour = i % 5 === 0;
+        const r1 = isHour ? radius * 0.72 : radius * 0.78;
+        const r2 = radius * 0.82;
 
-        const innerR = isHour ? radius * 0.72 : radius * 0.78;
-        const outerR = radius * 0.82;
-
-        const x1 = centerX + innerR * Math.sin(angle);
-        const y1 = centerY - innerR * Math.cos(angle);
-        const x2 = centerX + outerR * Math.sin(angle);
-        const y2 = centerY - outerR * Math.cos(angle);
-
-        ctx.strokeStyle = isHour ? '#ffffff' : 'rgba(200,200,220,0.3)';
+        ctx.strokeStyle = isHour ? config.accentColor : 'rgba(255,255,255,0.2)';
         ctx.lineWidth = isHour ? 3 : 1;
         ctx.lineCap = 'round';
 
-        ctx.beginPath();
-        ctx.moveTo(x1, y1);
-        ctx.lineTo(x2, y2);
-        ctx.stroke();
+        if (isHour) {
+            // Draw a small diamond/star for hour markers
+            ctx.save();
+            ctx.translate(Math.sin(a) * ((r1 + r2) / 2), -Math.cos(a) * ((r1 + r2) / 2));
+            ctx.rotate(a);
+            ctx.beginPath();
+            ctx.moveTo(0, -4);
+            ctx.lineTo(2, 0);
+            ctx.lineTo(0, 4);
+            ctx.lineTo(-2, 0);
+            ctx.closePath();
+            ctx.fillStyle = config.accentColor;
+            ctx.fill();
+            ctx.restore();
+        } else {
+            ctx.beginPath();
+            ctx.moveTo(Math.sin(a) * r1, -Math.cos(a) * r1);
+            ctx.lineTo(Math.sin(a) * r2, -Math.cos(a) * r2);
+            ctx.stroke();
+        }
     }
 
-    // Draw hour numbers (counter-rotate to stay upright)
-    ctx.font = `${radius * 0.1}px 'Segoe UI', Arial, sans-serif`;
-    ctx.fillStyle = 'rgba(255,255,255,0.8)';
+    // Numbers
+    ctx.fillStyle = '#ffffff';
+    ctx.font = `600 ${Math.round(radius * 0.1)}px "Segoe UI", Arial`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-
     for (let i = 1; i <= 12; i++) {
-        const angle = (i * 30) * Math.PI / 180;
-        const textR = radius * 0.65;
-        const x = centerX + textR * Math.sin(angle);
-        const y = centerY - textR * Math.cos(angle);
-
+        const a = i * 30 * Math.PI / 180;
+        const r = radius * 0.62;
+        const x = Math.sin(a) * r;
+        const y = -Math.cos(a) * r;
         ctx.save();
         ctx.translate(x, y);
-        ctx.rotate(-rotation); // Counter-rotate to keep text upright!
+        ctx.rotate(-rot);
         ctx.fillText(i.toString(), 0, 0);
         ctx.restore();
     }
-
     ctx.restore();
 }
 
-function drawHands(hourAngle, minuteAngle, faceRotation) {
-    // Hour and minute hands rotate with the face
+function drawHands(hour, min, rot) {
     ctx.save();
     ctx.translate(centerX, centerY);
-    ctx.rotate(faceRotation);
-    ctx.translate(-centerX, -centerY);
+    ctx.rotate(rot);
 
-    // Hour hand
+    // Hour (Warm White)
     ctx.save();
-    ctx.translate(centerX, centerY);
-    ctx.rotate(hourAngle);
-
-    ctx.shadowColor = 'rgba(0,0,0,0.5)';
-    ctx.shadowBlur = 10;
-    ctx.shadowOffsetX = 2;
-    ctx.shadowOffsetY = 2;
-
-    ctx.strokeStyle = config.hourHandColor;
-    ctx.lineWidth = radius * 0.03;
+    ctx.rotate(hour);
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = radius * 0.035;
     ctx.lineCap = 'round';
     ctx.beginPath();
+    ctx.moveTo(0, radius * 0.05);
+    ctx.lineTo(0, -radius * 0.42);
+    ctx.stroke();
+    // Inner line for elegance
+    ctx.strokeStyle = '#f0f0f0';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
     ctx.moveTo(0, 0);
-    ctx.lineTo(0, -radius * 0.45);
+    ctx.lineTo(0, -radius * 0.38);
     ctx.stroke();
     ctx.restore();
 
-    // Minute hand
+    // Minute (Warm White)
     ctx.save();
-    ctx.translate(centerX, centerY);
-    ctx.rotate(minuteAngle);
-
+    ctx.rotate(min);
     ctx.strokeStyle = '#e0e0e0';
-    ctx.lineWidth = radius * 0.02;
-    ctx.lineCap = 'round';
+    ctx.lineWidth = radius * 0.025;
     ctx.beginPath();
-    ctx.moveTo(0, 0);
-    ctx.lineTo(0, -radius * 0.65);
+    ctx.moveTo(0, radius * 0.08);
+    ctx.lineTo(0, -radius * 0.62);
     ctx.stroke();
     ctx.restore();
 
@@ -205,128 +307,111 @@ function drawHands(hourAngle, minuteAngle, faceRotation) {
 }
 
 function drawSecondHand() {
-    // Second hand is STATIONARY - always points up!
     ctx.save();
     ctx.translate(centerX, centerY);
 
-    // Glow effect
-    ctx.shadowColor = config.primaryColor;
+    // Festive Red Second Hand
+    ctx.strokeStyle = '#ff0000';
+    ctx.lineWidth = radius * 0.012;
+    ctx.lineCap = 'round';
+
+    ctx.shadowColor = '#ff3333';
     ctx.shadowBlur = 15;
 
-    ctx.strokeStyle = config.primaryColor;
-    ctx.lineWidth = radius * 0.01;
-    ctx.lineCap = 'round';
     ctx.beginPath();
-    ctx.moveTo(0, radius * 0.1); // Tail
-    ctx.lineTo(0, -radius * 0.72);
+    ctx.moveTo(0, radius * 0.12);
+    ctx.lineTo(0, -radius * 0.7);
     ctx.stroke();
 
+    ctx.shadowBlur = 0;
     ctx.restore();
 }
 
 function drawCenterCap() {
-    // Outer cap
-    const capGrad = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, radius * 0.04);
-    capGrad.addColorStop(0, '#505060');
-    capGrad.addColorStop(0.7, '#303040');
-    capGrad.addColorStop(1, '#202030');
+    // Gold cap
+    ctx.fillStyle = '#8b4513'; // Deep brown base
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, radius * 0.045, 0, Math.PI * 2);
+    ctx.fill();
 
+    const capGrad = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, radius * 0.04);
+    capGrad.addColorStop(0, '#f9f295');
+    capGrad.addColorStop(1, '#b8860b');
     ctx.fillStyle = capGrad;
     ctx.beginPath();
     ctx.arc(centerX, centerY, radius * 0.04, 0, Math.PI * 2);
     ctx.fill();
-
-    // Inner red dot
-    ctx.shadowColor = config.primaryColor;
-    ctx.shadowBlur = 10;
-
-    const dotGrad = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, radius * 0.015);
-    dotGrad.addColorStop(0, config.primaryColor);
-    dotGrad.addColorStop(1, '#c92a39');
-
-    ctx.fillStyle = dotGrad;
-    ctx.beginPath();
-    ctx.arc(centerX, centerY, radius * 0.015, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.shadowBlur = 0;
 }
 
-function drawSecondTip(seconds) {
+function drawSecondTip(s) {
     if (!config.showSecondTip) return;
-
-    // Second number at the tip of the second hand (fixed at top)
-    const tipY = centerY - radius * 0.78;
-
-    ctx.shadowColor = config.primaryColor;
-    ctx.shadowBlur = 10;
-
-    ctx.font = `bold ${radius * 0.08}px 'Segoe UI', Arial, sans-serif`;
-    ctx.fillStyle = config.primaryColor;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(seconds.toString().padStart(2, '0'), centerX, tipY);
-
-    ctx.shadowBlur = 0;
-}
-
-function drawDigitalTime(time, faceRotation) {
-    if (!config.showDigital) return;
-
     ctx.save();
-    ctx.translate(centerX, centerY);
-    ctx.rotate(faceRotation);
-
-    // Position relative to rotated face
-    const y = radius * 0.35;
-
-    // Background
-    ctx.fillStyle = 'rgba(255,255,255,0.05)';
-    ctx.roundRect(-radius * 0.25, y - radius * 0.06, radius * 0.5, radius * 0.12, 5);
-    ctx.fill();
-
-    // Time text (counter-rotate to stay readable... or let it spin!)
-    ctx.font = `${radius * 0.08}px 'Consolas', monospace`;
-    ctx.fillStyle = 'rgba(255,255,255,0.5)';
+    ctx.shadowColor = '#ff0000';
+    ctx.shadowBlur = 10;
+    ctx.font = `bold ${Math.round(radius * 0.09)}px "Segoe UI", Arial`;
+    ctx.fillStyle = '#ff0000';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(time, 0, y);
-
+    ctx.fillText(s.toString().padStart(2, '0'), centerX, centerY - radius * 0.78);
     ctx.restore();
 }
 
+function drawDigital(time, rot) {
+    if (!config.showDigital) return;
+    ctx.save();
+    ctx.translate(centerX, centerY);
+    ctx.rotate(rot);
+
+    // Festive display
+    ctx.fillStyle = 'rgba(255, 215, 0, 0.1)';
+    ctx.beginPath();
+    ctx.roundRect(-radius * 0.25, radius * 0.28, radius * 0.5, radius * 0.12, 8);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255, 215, 0, 0.2)';
+    ctx.stroke();
+
+    ctx.font = `600 ${Math.round(radius * 0.075)}px "Consolas", monospace`;
+    ctx.fillStyle = '#ffd700'; // Gold time
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(time, 0, radius * 0.34);
+    ctx.restore();
+}
+
+let frame = 0;
 function draw() {
+    frame++;
     const now = new Date();
-    const hours = now.getHours() % 12;
-    const minutes = now.getMinutes();
-    const seconds = now.getSeconds();
-    const millis = now.getMilliseconds();
+    const h = now.getHours() % 12, m = now.getMinutes(), s = now.getSeconds(), ms = now.getMilliseconds();
+    const secA = (s * 6 + ms * 0.006) * Math.PI / 180;
+    const minA = (m * 6 + s * 0.1) * Math.PI / 180;
+    const hourA = (h * 30 + m * 0.5) * Math.PI / 180;
+    const faceRot = -secA;
 
-    // Smooth angles
-    const secondAngle = (seconds * 6 + millis * 0.006) * Math.PI / 180;
-    const minuteAngle = (minutes * 6 + seconds * 0.1) * Math.PI / 180;
-    const hourAngle = (hours * 30 + minutes * 0.5) * Math.PI / 180;
+    if (frame % 3 === 0) spawnParticle();
+    updateParticles(frame);
+    updateSnow();
 
-    // Face rotates OPPOSITE to seconds (this is the wild part!)
-    const faceRotation = -secondAngle;
-
-    // Clear
-    ctx.fillStyle = '#0a0a12';
+    // Night Sky Background
+    const bgGrad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+    bgGrad.addColorStop(0, '#050a1b');
+    bgGrad.addColorStop(1, '#0a1a35');
+    ctx.fillStyle = bgGrad;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // Draw everything
+    drawSnow();
+    drawParticles(frame);
     drawBezel();
-    drawFace(faceRotation);
-    drawDigitalTime(now.toTimeString().slice(0, 8), faceRotation);
-    drawHands(hourAngle, minuteAngle, faceRotation);
+    drawFace(faceRot);
+    drawDigital(now.toTimeString().slice(0, 8), faceRot);
+    drawHands(hourA, minA, faceRot);
     drawSecondHand();
     drawCenterCap();
-    drawSecondTip(seconds);
+    drawSecondTip(s);
 
     requestAnimationFrame(draw);
 }
 
-// Initialize
 resize();
 window.addEventListener('resize', resize);
 draw();
