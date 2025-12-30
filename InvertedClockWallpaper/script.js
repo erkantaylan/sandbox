@@ -12,7 +12,8 @@ let config = {
     showDigital: true,
     showSecondTip: true,
     showParticles: true,
-    showSnow: true
+    showSnow: true,
+    inverted: true
 };
 
 let centerX, centerY, radius;
@@ -48,6 +49,7 @@ window.wallpaperPropertyListener = {
         if (properties.showsecondtip !== undefined) config.showSecondTip = properties.showsecondtip.value;
         if (properties.showparticles !== undefined) config.showParticles = properties.showparticles.value;
         if (properties.showsnow !== undefined) config.showSnow = properties.showsnow.value;
+        if (properties.inverted !== undefined) config.inverted = properties.inverted.value;
     }
 };
 
@@ -102,18 +104,22 @@ function initAmbientParticles() {
     }
 }
 
-function spawnParticle() {
-    if (!config.showParticles || particles.length >= 80) return;
-    particles.push({
-        x: centerX,
-        y: centerY - radius * 0.7,
-        vx: (Math.random() - 0.5) * 1.5,
-        vy: (Math.random() - 0.5) * 1.5,
-        size: Math.random() * 3 + 1,
-        life: 1,
-        decay: Math.random() * 0.015 + 0.005,
-        isSparkle: Math.random() > 0.5
-    });
+function spawnParticle(handAngle) {
+    if (!config.showParticles || particles.length >= 200) return;
+    const dist = radius * 0.7;
+    // Spawn multiple particles for exaggeration
+    for (let i = 0; i < 3; i++) {
+        particles.push({
+            x: centerX + Math.sin(handAngle) * dist,
+            y: centerY - Math.cos(handAngle) * dist,
+            vx: (Math.random() - 0.5) * 3, // Increased velocity
+            vy: (Math.random() - 0.5) * 3,
+            size: Math.random() * 4 + 1,
+            life: 1,
+            decay: Math.random() * 0.01 + 0.005, // Slower decay
+            isSparkle: Math.random() > 0.4
+        });
+    }
 }
 
 function updateParticles(time) {
@@ -123,6 +129,7 @@ function updateParticles(time) {
         p.x += p.vx;
         p.y += p.vy;
         p.life -= p.decay;
+        // Gravity/suction effect
         const dx = centerX - p.x, dy = centerY - p.y;
         const dist = Math.sqrt(dx * dx + dy * dy) || 1;
         p.vx += (dx / dist) * 0.02;
@@ -271,11 +278,10 @@ function drawFace(rot) {
 function drawHands(hour, min, rot) {
     ctx.save();
     ctx.translate(centerX, centerY);
-    ctx.rotate(rot);
 
     // Hour (Warm White)
     ctx.save();
-    ctx.rotate(hour);
+    ctx.rotate(rot + hour);
     ctx.strokeStyle = '#ffffff';
     ctx.lineWidth = radius * 0.035;
     ctx.lineCap = 'round';
@@ -294,7 +300,7 @@ function drawHands(hour, min, rot) {
 
     // Minute (Warm White)
     ctx.save();
-    ctx.rotate(min);
+    ctx.rotate(rot + min);
     ctx.strokeStyle = '#e0e0e0';
     ctx.lineWidth = radius * 0.025;
     ctx.beginPath();
@@ -306,16 +312,17 @@ function drawHands(hour, min, rot) {
     ctx.restore();
 }
 
-function drawSecondHand() {
+function drawSecondHand(secAngle, rot) {
     ctx.save();
     ctx.translate(centerX, centerY);
+    ctx.rotate(rot + secAngle);
 
-    // Festive Red Second Hand
-    ctx.strokeStyle = '#ff0000';
+    // Festive Second Hand using Primary Color
+    ctx.strokeStyle = config.primaryColor;
     ctx.lineWidth = radius * 0.012;
     ctx.lineCap = 'round';
 
-    ctx.shadowColor = '#ff3333';
+    ctx.shadowColor = config.primaryColor;
     ctx.shadowBlur = 15;
 
     ctx.beginPath();
@@ -343,16 +350,25 @@ function drawCenterCap() {
     ctx.fill();
 }
 
-function drawSecondTip(s) {
+function drawSecondTip(s, secAngle, rot) {
     if (!config.showSecondTip) return;
     ctx.save();
-    ctx.shadowColor = '#ff0000';
+
+    // Exact same angle logic as the second hand
+    const totalAngle = rot + secAngle;
+    const dist = radius * 0.78;
+
+    // Direct sin/cos positioning (No ctx.rotate here to keep text upright)
+    const x = centerX + Math.sin(totalAngle) * dist;
+    const y = centerY - Math.cos(totalAngle) * dist;
+
+    ctx.shadowColor = config.primaryColor;
     ctx.shadowBlur = 10;
     ctx.font = `bold ${Math.round(radius * 0.09)}px "Segoe UI", Arial`;
-    ctx.fillStyle = '#ff0000';
+    ctx.fillStyle = config.primaryColor;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(s.toString().padStart(2, '0'), centerX, centerY - radius * 0.78);
+    ctx.fillText(s.toString().padStart(2, '0'), x, y);
     ctx.restore();
 }
 
@@ -371,7 +387,7 @@ function drawDigital(time, rot) {
     ctx.stroke();
 
     ctx.font = `600 ${Math.round(radius * 0.075)}px "Consolas", monospace`;
-    ctx.fillStyle = '#ffd700'; // Gold time
+    ctx.fillStyle = config.accentColor; // Use Accent Color
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText(time, 0, radius * 0.34);
@@ -386,9 +402,11 @@ function draw() {
     const secA = (s * 6 + ms * 0.006) * Math.PI / 180;
     const minA = (m * 6 + s * 0.1) * Math.PI / 180;
     const hourA = (h * 30 + m * 0.5) * Math.PI / 180;
-    const faceRot = -secA;
 
-    if (frame % 3 === 0) spawnParticle();
+    const faceRot = config.inverted ? -secA : 0;
+    const handWorldRot = faceRot + secA;
+
+    if (frame % 2 === 0) spawnParticle(handWorldRot); // Faster spawn
     updateParticles(frame);
     updateSnow();
 
@@ -405,9 +423,9 @@ function draw() {
     drawFace(faceRot);
     drawDigital(now.toTimeString().slice(0, 8), faceRot);
     drawHands(hourA, minA, faceRot);
-    drawSecondHand();
+    drawSecondHand(secA, faceRot);
     drawCenterCap();
-    drawSecondTip(s);
+    drawSecondTip(s, secA, faceRot);
 
     requestAnimationFrame(draw);
 }

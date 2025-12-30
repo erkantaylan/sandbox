@@ -1,8 +1,14 @@
 {
-    "title": "Inverted Analog Clock",
-    "description": "A unique analog clock where the face rotates and the second hand stays fixed pointing north",
+    "title": "Christmas Magic - Inverted Clock",
+    "description": "A festive Christmas-themed analog clock with a unique inverted rotation and falling snow.",
     "type": "web",
     "file": "index.html",
+    "preview": "preview.jpg",
+    "tags": [
+        "Abstract",
+        "Clocks",
+        "Holiday"
+    ],
     "general": {
         "properties": {
             "primarycolor": {
@@ -32,6 +38,11 @@
             },
             "showsnow": {
                 "text": "Show Snow",
+                "type": "bool",
+                "value": true
+            },
+            "inverted": {
+                "text": "Inverted Rotation",
                 "type": "bool",
                 "value": true
             }
