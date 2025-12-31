@@ -45,6 +45,16 @@
                 "text": "Inverted Rotation",
                 "type": "bool",
                 "value": true
+            },
+            "showfireworks": {
+                "text": "Show Fireworks",
+                "type": "bool",
+                "value": true
+            },
+            "bezelcolor": {
+                "text": "Bezel Color",
+                "type": "color",
+                "value": "0.83 0.69 0.22"
             }
         }
     }

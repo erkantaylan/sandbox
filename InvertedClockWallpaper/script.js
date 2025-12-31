@@ -13,7 +13,9 @@ let config = {
     showSecondTip: true,
     showParticles: true,
     showSnow: true,
-    inverted: true
+    inverted: true,
+    showFireworks: true,
+    bezelColor: '#d4af37'  // Gold bezel
 };
 
 let centerX, centerY, radius;
@@ -22,6 +24,7 @@ let centerX, centerY, radius;
 const particles = [];
 const ambientParticles = [];
 const snowParticles = [];
+let fireworksInstance = null;
 
 function resize() {
     canvas.width = window.innerWidth;
@@ -50,6 +53,11 @@ window.wallpaperPropertyListener = {
         if (properties.showparticles !== undefined) config.showParticles = properties.showparticles.value;
         if (properties.showsnow !== undefined) config.showSnow = properties.showsnow.value;
         if (properties.inverted !== undefined) config.inverted = properties.inverted.value;
+        if (properties.showfireworks !== undefined) config.showFireworks = properties.showfireworks.value;
+        if (properties.bezelcolor) {
+            const c = properties.bezelcolor.value.split(' ').map(v => Math.round(v * 255));
+            config.bezelColor = `rgb(${c[0]},${c[1]},${c[2]})`;
+        }
     }
 };
 
@@ -89,6 +97,37 @@ function drawSnow() {
         ctx.fill();
     });
     ctx.globalAlpha = 1.0;
+}
+
+function initFireworks() {
+    const container = document.getElementById('fireworks-container');
+    if (typeof Fireworks !== 'undefined' && Fireworks.default) {
+        fireworksInstance = new Fireworks.default(container, {
+            autoresize: true,
+            opacity: 0.8,
+            acceleration: 1.05,
+            friction: 0.97,
+            gravity: 1.5,
+            particles: 50,
+            intensity: 30,
+            hue: { min: 0, max: 360 },
+            brightness: { min: 50, max: 80 }
+        });
+    }
+}
+
+let fireworksRunning = false;
+
+function updateFireworks(shouldStart) {
+    if (!fireworksInstance) return;
+
+    if (shouldStart && !fireworksRunning) {
+        fireworksInstance.start();
+        fireworksRunning = true;
+    } else if (!shouldStart && fireworksRunning) {
+        fireworksInstance.stop();
+        fireworksRunning = false;
+    }
 }
 
 function initAmbientParticles() {
@@ -180,17 +219,20 @@ function drawParticles(time) {
 }
 
 function drawBezel() {
-    // Elegant Gold Bezel
+    // Parse bezel color for gradient
+    const baseColor = config.bezelColor;
+
+    // Create gradient based on bezel color
     const grad = ctx.createLinearGradient(centerX - radius, centerY - radius, centerX + radius, centerY + radius);
-    grad.addColorStop(0, '#d4af37'); // Metallic gold
-    grad.addColorStop(0.3, '#f9f295'); // Bright gold
-    grad.addColorStop(0.5, '#e6be8a'); // Warm gold
-    grad.addColorStop(0.7, '#b8860b'); // Dark gold
-    grad.addColorStop(1, '#996515'); // Golden brown
+    grad.addColorStop(0, baseColor);
+    grad.addColorStop(0.3, '#f9f295'); // Bright highlight
+    grad.addColorStop(0.5, baseColor);
+    grad.addColorStop(0.7, baseColor);
+    grad.addColorStop(1, baseColor);
 
     // Outer glow
     ctx.shadowBlur = 20;
-    ctx.shadowColor = 'rgba(212, 175, 55, 0.4)';
+    ctx.shadowColor = baseColor;
 
     ctx.fillStyle = grad;
     ctx.beginPath();
@@ -410,6 +452,9 @@ function draw() {
     updateParticles(frame);
     updateSnow();
 
+    // Fireworks - controlled by showFireworks setting
+    updateFireworks(config.showFireworks);
+
     // Night Sky Background
     const bgGrad = ctx.createLinearGradient(0, 0, 0, canvas.height);
     bgGrad.addColorStop(0, '#050a1b');
@@ -418,6 +463,9 @@ function draw() {
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     drawSnow();
+
+    // fireworks-js handles its own drawing on its own canvas
+
     drawParticles(frame);
     drawBezel();
     drawFace(faceRot);
@@ -431,5 +479,6 @@ function draw() {
 }
 
 resize();
+initFireworks();
 window.addEventListener('resize', resize);
 draw();
